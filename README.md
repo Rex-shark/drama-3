@@ -130,7 +130,7 @@ cd frontend && npm install && npm run dev
 
 - 模型權重與輸出受 Fish Audio Community License 約束：年營收 50 萬美元以下可商用；對外提供 TTS 服務或 API 需另簽授權；
   禁止未經同意複製真人聲音；禁止用輸出訓練其他語音模型；須標示 Built with Fish Audio。本專案定位為本機自用工具。
-- 本 repo 的程式碼授權尚未指定。
+- 本 repo 的程式碼以 [MIT License](LICENSE) 釋出；模型權重不在此授權範圍內，仍受上述 Fish Audio 條款約束。
 
 ---
 
