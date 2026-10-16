@@ -1,0 +1,92 @@
+### 健康檢查
+GET {{host}}/v1/health
+
+### 列出模型版本
+# peak_memory_gb＝行程峰值（含產生中的 MLX 快取）55 / 72 / 103；active_memory_gb＝MLX active 峰值 27 / 45 / 76（4bit / 8bit / bf16）
+GET {{host}}/v1/models
+
+### 載入 8bit
+POST {{host}}/v1/models/load
+Content-Type: application/json
+
+{ "id": "8bit" }
+
+### 卸載
+POST {{host}}/v1/models/unload
+
+### 最近一次產生的結果（串流結束後查 early_stop；尚無紀錄回 404 no_generation_yet）
+GET {{host}}/v1/tts/last
+
+### 產生：無參考音檔，單角色（非串流回 header X-Early-Stop、X-Chunks＝自動分段數）
+# X-Early-Stop: true 的兩種規則：出聲後連續 6 秒 < −50 dBFS（裁到最後有聲點後 0.5 秒），
+# 或開頭 6 秒內從未有 100 ms 窗 > −40 dBFS（只回開頭 0.5 秒）。
+# 已知限制：出聲後才轉成低音量雜訊（−50 到 −34 dBFS）會一路拖到 max_tokens、偵測不到；開頭 6 秒內就都很小聲的會被開頭規則抓到。
+POST {{host}}/v1/tts
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="text"
+
+<|speaker:0|> [疲憊而溫柔] 我們明天再談吧。[sighs] 今天真的太累了。
+--WebAppBoundary--
+
+### 產生：兩個角色，各一段參考音檔（檔案路徑請改成本機實際檔案）
+POST {{host}}/v1/tts
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="text"
+
+<|speaker:0|> 你來了。
+<|speaker:1|> <whisper>別出聲，他們還在外面。</whisper>
+--WebAppBoundary
+Content-Disposition: form-data; name="ref_audio"; filename="a.wav"
+Content-Type: audio/wav
+
+< ./samples/a.wav
+--WebAppBoundary
+Content-Disposition: form-data; name="ref_text"
+
+這是甲角色的參考逐字稿。
+--WebAppBoundary
+Content-Disposition: form-data; name="ref_speaker"
+
+0
+--WebAppBoundary
+Content-Disposition: form-data; name="ref_audio"; filename="b.wav"
+Content-Type: audio/wav
+
+< ./samples/b.wav
+--WebAppBoundary
+Content-Disposition: form-data; name="ref_text"
+
+這是乙角色的參考逐字稿。
+--WebAppBoundary
+Content-Disposition: form-data; name="ref_speaker"
+
+1
+--WebAppBoundary
+Content-Disposition: form-data; name="temperature"
+
+1.0
+--WebAppBoundary--
+
+### MOCK 專用：模擬 8bit 提前中斷（出聲 1 秒後轉靜音，約 7 秒後回 X-Early-Stop: true、X-Audio-Seconds 約 1.5）
+POST {{host}}/v1/tts
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="text"
+
+<|speaker:0|> [mock:early-stop] 你說什麼？不可能吧。
+--WebAppBoundary--
+
+### MOCK 專用：模擬全程無聲（開頭無聲規則約 6 秒觸發，回 X-Early-Stop: true、X-Audio-Seconds 約 0.5；後端 log 記 規則=onset）
+POST {{host}}/v1/tts
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="text"
+
+<|speaker:0|> [mock:silent] 你說什麼？不可能吧。
+--WebAppBoundary--

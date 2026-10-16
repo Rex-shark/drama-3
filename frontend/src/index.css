@@ -1,0 +1,647 @@
+/*
+ * 設計 token 與基礎元件。色值、材質以根目錄 DESIGN.md（品牌層）為準；
+ * 元件與版面以 frontend/DESIGN.md（工作台層）為準。
+ * 不用顏色區分角色與狀態、沒有圓角、沒有圓點；只有 take-sheet 有陰影。
+ */
+
+:root {
+  color-scheme: light;
+
+  /* 色票（品牌層 + 工作台層 error） */
+  --ink: #121212;
+  --paper: #f1f1ef;
+  --card: #fbfbf9;
+  --shade: #c9c9c6;
+  --ink-muted: #595957;
+  --line-soft: #d2d2ce;
+  --edge-1: #e4e4e0;
+  --edge-2: #d3d3cf;
+  --error: #9b2f22;
+  /* 墨底上的字：button-primary 亮色用 card、暗色用 paper-dark */
+  --on-ink: #fbfbf9;
+  --press-hi: rgba(255, 255, 255, 0.95);
+
+  /* 字型 */
+  --font-display: 'Lexend', 'Noto Sans TC', system-ui, sans-serif;
+  --font-body: 'Noto Sans TC', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* 間距 4 / 8 / 12 / 16 / 24 / 32 / 48 / 56 */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s6: 24px;
+  --s8: 32px;
+  --s12: 48px;
+  --s14: 56px;
+
+  /* 紙張紋理（SVG 濾鏡 data URI；光源 azimuth 225°，左上） */
+  --tex-tooth: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='p' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='4' stitchTiles='stitch'/><feDiffuseLighting lighting-color='%23fff' surfaceScale='1.8'><feDistantLight azimuth='225' elevation='55'/></feDiffuseLighting><feComponentTransfer><feFuncR type='linear' slope='.5' intercept='.57'/><feFuncG type='linear' slope='.5' intercept='.57'/><feFuncB type='linear' slope='.5' intercept='.57'/></feComponentTransfer></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+  --tex-sheet: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='p' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='5' stitchTiles='stitch'/><feDiffuseLighting lighting-color='%23fff' surfaceScale='1.5'><feDistantLight azimuth='225' elevation='50'/></feDiffuseLighting><feComponentTransfer><feFuncR type='linear' slope='.4' intercept='.63'/><feFuncG type='linear' slope='.4' intercept='.63'/><feFuncB type='linear' slope='.4' intercept='.63'/></feComponentTransfer></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+  --tex-cloud: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='640'><filter id='c' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.006 .018' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='.14 0 0 0 .88  .14 0 0 0 .88  .14 0 0 0 .88  0 0 0 0 1'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>");
+  --tex-ink: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='i' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.4 .38'/></filter><rect width='100%25' height='100%25' filter='url(%23i)'/></svg>");
+  --tex-blend: multiply;
+  --sheen: radial-gradient(120% 90% at 20% 0%, rgba(255, 255, 255, 0.5), transparent 60%);
+
+  /* 卡紙厚度：切邊、兩層紙、只往下的長陰影 */
+  --shadow-sheet:
+    0 0 0 0.5px rgba(0, 0, 0, 0.07),
+    0 1.5px 0 var(--edge-1),
+    0 3px 0 -0.5px var(--edge-2),
+    0 26px 44px -26px rgba(0, 0, 0, 0.5);
+  --window-over-blend: multiply;
+  --window-over-opacity: 0.55;
+  /* 亮色：over-pass 整片蓋在卡紙上（multiply 在淺底只是微灰）；暗色改由卡紙內部那道蓋紙面，按鈕疊在窗光之上 */
+  --window-over-z: 2;
+  --window-sheet-pass: none;
+}
+
+/* 暗色：黑卡紙放在黑紙上；紋理改 overlay、remap 以 0.5 為中心 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --ink: #ecebe8;
+    --paper: #161616;
+    --card: #202020;
+    --shade: #0b0b0b;
+    --ink-muted: #a2a19d;
+    --line-soft: #30302e;
+    --edge-1: #2a2a29;
+    --edge-2: #0e0e0e;
+    --error: #d9695a;
+    --on-ink: #161616;
+    --press-hi: rgba(0, 0, 0, 0.6);
+    --tex-tooth: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='p' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='4' stitchTiles='stitch'/><feDiffuseLighting lighting-color='%23fff' surfaceScale='1.8'><feDistantLight azimuth='225' elevation='55'/></feDiffuseLighting><feComponentTransfer><feFuncR type='linear' slope='.35' intercept='.21'/><feFuncG type='linear' slope='.35' intercept='.21'/><feFuncB type='linear' slope='.35' intercept='.21'/></feComponentTransfer></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+    --tex-sheet: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='p' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='5' stitchTiles='stitch'/><feDiffuseLighting lighting-color='%23fff' surfaceScale='1.5'><feDistantLight azimuth='225' elevation='50'/></feDiffuseLighting><feComponentTransfer><feFuncR type='linear' slope='.35' intercept='.23'/><feFuncG type='linear' slope='.35' intercept='.23'/><feFuncB type='linear' slope='.35' intercept='.23'/></feComponentTransfer></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+    --tex-cloud: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='640'><filter id='c' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.006 .018' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='.14 0 0 0 .43  .14 0 0 0 .43  .14 0 0 0 .43  0 0 0 0 1'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>");
+    --tex-blend: overlay;
+    --sheen: radial-gradient(120% 90% at 20% 0%, rgba(255, 255, 255, 0.06), transparent 60%);
+    --window-over-blend: normal;
+    --window-over-opacity: 0.3;
+    --window-over-z: 0;
+    --window-sheet-pass: block;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --ink: #ecebe8;
+  --paper: #161616;
+  --card: #202020;
+  --shade: #0b0b0b;
+  --ink-muted: #a2a19d;
+  --line-soft: #30302e;
+  --edge-1: #2a2a29;
+  --edge-2: #0e0e0e;
+  --error: #d9695a;
+  --on-ink: #161616;
+  --press-hi: rgba(0, 0, 0, 0.6);
+  --tex-tooth: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='p' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='4' stitchTiles='stitch'/><feDiffuseLighting lighting-color='%23fff' surfaceScale='1.8'><feDistantLight azimuth='225' elevation='55'/></feDiffuseLighting><feComponentTransfer><feFuncR type='linear' slope='.35' intercept='.21'/><feFuncG type='linear' slope='.35' intercept='.21'/><feFuncB type='linear' slope='.35' intercept='.21'/></feComponentTransfer></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+  --tex-sheet: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='p' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='5' stitchTiles='stitch'/><feDiffuseLighting lighting-color='%23fff' surfaceScale='1.5'><feDistantLight azimuth='225' elevation='50'/></feDiffuseLighting><feComponentTransfer><feFuncR type='linear' slope='.35' intercept='.23'/><feFuncG type='linear' slope='.35' intercept='.23'/><feFuncB type='linear' slope='.35' intercept='.23'/></feComponentTransfer></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+  --tex-cloud: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='640' height='640'><filter id='c' x='0' y='0' width='100%25' height='100%25'><feTurbulence type='fractalNoise' baseFrequency='.006 .018' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='.14 0 0 0 .43  .14 0 0 0 .43  .14 0 0 0 .43  0 0 0 0 1'/></filter><rect width='100%25' height='100%25' filter='url(%23c)'/></svg>");
+  --tex-blend: overlay;
+  --sheen: radial-gradient(120% 90% at 20% 0%, rgba(255, 255, 255, 0.06), transparent 60%);
+  --window-over-blend: normal;
+  --window-over-opacity: 0.3;
+  --window-over-z: 0;
+  --window-sheet-pass: block;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* 紙面：tooth + cloud，紋理只在 body 與 take-sheet */
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: var(--tex-tooth), var(--tex-cloud);
+  background-size: 240px 240px, 640px 640px;
+  background-blend-mode: var(--tex-blend);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
+}
+
+h1,
+h2,
+h3,
+p,
+ol,
+ul {
+  margin: 0;
+}
+
+ol,
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  border-radius: 0;
+}
+
+/* ---------- 字級 ---------- */
+
+.title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+}
+
+.label {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.field-label,
+.label-cjk {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.04em;
+}
+
+.body-sm {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+
+.data {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.muted {
+  color: var(--ink-muted);
+}
+
+/* 校對紅筆：只當文字或 1px 線，不當填色 */
+.error-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--error);
+}
+
+.is-error-text {
+  color: var(--error);
+}
+
+/* 凸版壓痕：只套 13px 以上（根目錄規則），目前只有頁面標題 */
+.press {
+  text-shadow: 0 1px 0 var(--press-hi);
+  -webkit-mask-image: var(--tex-ink);
+  mask-image: var(--tex-ink);
+  -webkit-mask-size: 160px 160px;
+  mask-size: 160px 160px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- 互動狀態 ---------- */
+
+:focus-visible {
+  outline: 1px solid var(--ink);
+  outline-offset: 2px;
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---------- 按鈕 ---------- */
+
+.btn-primary,
+.btn-outline,
+.btn-text,
+.btn-glyph,
+.transport,
+.chip,
+.seg,
+.tab,
+.stamp {
+  appearance: none;
+  border-radius: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn-primary {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--on-ink);
+  padding: 12px 20px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.16em;
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  padding: 8px 14px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+}
+
+.btn-text {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  padding: 2px 6px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.btn-glyph,
+.transport {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+}
+
+.transport {
+  border-color: var(--ink);
+  width: 28px;
+  height: 28px;
+}
+
+@media (hover: hover) {
+  .btn-outline:hover:not(:disabled),
+  .btn-text:hover:not(:disabled),
+  .btn-glyph:hover:not(:disabled),
+  .transport:hover:not(:disabled),
+  .chip:hover:not(:disabled),
+  .seg:hover:not(:disabled):not(.is-on),
+  .tab:hover:not(.is-on) {
+    background: var(--ink);
+    color: var(--on-ink);
+  }
+}
+
+.btn-primary:active:not(:disabled),
+.btn-outline:active:not(:disabled),
+.btn-text:active:not(:disabled),
+.btn-glyph:active:not(:disabled),
+.transport:active:not(:disabled),
+.chip:active:not(:disabled),
+.seg:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* disabled：文字與邊框改 ink-muted，不降透明度 */
+.btn-primary:disabled,
+.btn-outline:disabled,
+.btn-text:disabled,
+.btn-glyph:disabled,
+.transport:disabled,
+.chip:disabled,
+.seg:disabled,
+.stamp:disabled {
+  cursor: not-allowed;
+  background: transparent;
+  color: var(--ink-muted);
+  border-color: var(--ink-muted);
+}
+
+.btn-text:disabled,
+.btn-glyph:disabled {
+  border-color: transparent;
+}
+
+.btn-primary:disabled {
+  background: var(--paper);
+}
+
+.glyph {
+  display: block;
+  flex: none;
+}
+
+/* ---------- 輸入 ---------- */
+
+.input,
+.select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: var(--card);
+  color: var(--ink);
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.input::placeholder {
+  color: var(--ink-muted);
+}
+
+.input:disabled,
+.select:disabled {
+  color: var(--ink-muted);
+  cursor: not-allowed;
+}
+
+textarea.input {
+  resize: vertical;
+  field-sizing: content;
+}
+
+.textarea-script {
+  padding: 12px 14px;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.textarea-sm {
+  min-height: 3.2em;
+  font-size: 14px;
+}
+
+.input-data {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* 錯誤：欄位底部 1px error 線，不改底色 */
+.input.is-error {
+  box-shadow: inset 0 -1px 0 var(--error);
+}
+
+.select-wrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.select {
+  appearance: none;
+  padding: 8px 32px 8px 10px;
+  cursor: pointer;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  translate: 0 -50%;
+  pointer-events: none;
+  color: var(--ink);
+}
+
+/* 滑桿：1px 軌道、墨色已填段、12px 方塊滑塊 */
+.slider,
+.progress-input {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track,
+.progress-input::-webkit-slider-runnable-track {
+  height: 1px;
+  background: linear-gradient(var(--ink), var(--ink)) 0 0 / var(--pct, 0%) 100% no-repeat, var(--line-soft);
+}
+
+.slider::-moz-range-track,
+.progress-input::-moz-range-track {
+  height: 1px;
+  background: var(--line-soft);
+}
+
+.slider::-moz-range-progress,
+.progress-input::-moz-range-progress {
+  height: 1px;
+  background: var(--ink);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -5.5px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+}
+
+.slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ink);
+}
+
+.slider:disabled {
+  cursor: not-allowed;
+}
+
+.slider:disabled::-webkit-slider-thumb {
+  background: var(--ink-muted);
+}
+
+.slider:disabled::-moz-range-thumb {
+  background: var(--ink-muted);
+}
+
+/* 播放進度：只有線，沒有滑塊；hover 時游標處一條 1px × 8px 墨色刻度 */
+.progress-wrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.progress-wrap::after {
+  content: '';
+  position: absolute;
+  left: var(--tick-x, 0);
+  top: 50%;
+  width: 1px;
+  height: 8px;
+  translate: 0 -50%;
+  background: var(--ink);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+@media (hover: hover) {
+  .progress-wrap:hover:has(.progress-input:not(:disabled))::after {
+    visibility: visible;
+  }
+}
+
+.progress-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0;
+  height: 0;
+  border: 0;
+}
+
+.progress-input::-moz-range-thumb {
+  width: 0;
+  height: 0;
+  border: 0;
+}
+
+/* ---------- 開關、chip、角色章 ---------- */
+
+.segmented {
+  display: inline-flex;
+  flex: none;
+}
+
+.seg,
+.tab {
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink-muted);
+  padding: 4px 8px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+}
+
+.seg + .seg {
+  margin-left: -1px;
+}
+
+.seg.is-on,
+.tab.is-on {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+.chip {
+  border: 1px solid var(--line-soft);
+  background: transparent;
+  color: var(--ink-muted);
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.chip:disabled {
+  border-color: var(--line-soft);
+}
+
+.stamp {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0;
+  cursor: default;
+}
+
+button.stamp {
+  cursor: pointer;
+}
+
+.stamp.is-active {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+/* 處理中：1Hz 閃爍方塊（不是圓點） */
+.busy-mark {
+  display: inline-block;
+  margin-left: 6px;
+  animation: busy-blink 1s steps(1, end) infinite;
+}
+
+@keyframes busy-blink {
+  50% {
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .busy-mark {
+    animation: none;
+    font-size: 0;
+  }
+
+  .busy-mark::after {
+    content: ' 處理中';
+    font-size: 11px;
+  }
+}

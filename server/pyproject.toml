@@ -1,0 +1,36 @@
+# drama-3 後端：FastAPI 薄封裝 mlx-audio，在 Apple Silicon 本機跑 Fish Audio Drama 3。
+# 環境由 uv 管理（server/.venv），系統 Python 3.9 不能用。
+[project]
+name = "drama3-server"
+version = "0.1.0"
+description = "Fish Audio Drama 3 本機 TTS 後端（FastAPI + mlx-audio）"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.22",
+    "numpy>=1.26.4",
+    # 提供 `hf` CLI（models/download.sh 用 `hf download`）；mlx-audio 本身也要求 >=1.0。
+    "huggingface_hub>=1.0",
+    # fish_drama3 的 post_load_hook 直接 `from tokenizers import Tokenizer`；
+    # 它原本經 transformers 間接帶入，這裡明列以免上游調整依賴時悄悄缺件。
+    "tokenizers",
+    # 不裝任何 extra：
+    # - [server] 會拖 webrtcvad（需編譯、還要 setuptools<81），本專案自寫 FastAPI 不需要。
+    # - [tts] 是 mistral-common / sentencepiece，只有其他 TTS 模型用得到；
+    #   fish_drama3 只用核心依賴（mlx、numpy、tokenizers、huggingface_hub、miniaudio）。
+    "mlx-audio",
+]
+
+[tool.uv]
+# 本專案不是要發佈的套件，只是應用程式環境。
+package = false
+
+[tool.uv.sources]
+# 鎖定 mlx-audio 到 commit dad2087f（2026-10-14 16:10 +0200）：
+#   "Merge pull request #1018 from stickerdaniel/fish-drama3"
+# 理由：這是把 Fish Audio Drama 3（mlx_audio/tts/models/fish_drama3）併入主線的合併 commit，
+#   同時已含其前置 PR #1017（Fish S1 DAC codec 推理）與 #1021（重取樣修正）。
+#   Drama 3 支援尚未進正式 release，鎖完整 SHA 避免 `uv sync` 時被上游變動破壞。
+# 要升級：確認新 commit 仍有 fish_drama3 且 generate 簽名未變，再改這裡並重跑 setup.sh。
+mlx-audio = { git = "https://github.com/Blaizzy/mlx-audio", rev = "dad2087f790dfe96b07d5aac1405db4b578b411f" }

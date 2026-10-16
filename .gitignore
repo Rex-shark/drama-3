@@ -1,0 +1,32 @@
+# 模型權重（每個版本 22–67 GB）
+models/*/
+!models/download.sh
+!models/README.md
+
+# Python
+server/.venv/
+server/__pycache__/
+server/**/__pycache__/
+*.pyc
+
+# 暫存參考音檔
+server/tmp/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# 編輯器 / 系統
+.idea/
+*.iml
+.DS_Store
+*.log
+user/http/samples/
+
+# Claude 相關（不進版控）
+.claude/
+CLAUDE.md
+
+# 截圖與 IDE 執行設定
+frontend/screenshots/
+.run/
